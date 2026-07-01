@@ -1,10 +1,9 @@
 /**
   ******************************************************************************
   * @file    nnc6521_waveform_config.c
-  * @brief   NNC6521 waveform configuration for DJM-V10 beauty device.
-  *          Implements 9 predefined waveforms with current mapping and
-  *          NNC6521 driver API integration.
-  *          All comments in English.
+  * @brief   NNC6521 波形配置文件，用于 DJM-V10 美容设备。
+  *          实现 9 种预定义波形的电流映射和 NNC6521 驱动 API 集成。
+  *          包含波形参数计算、配置查询和波形应用功能。
   ******************************************************************************
   */
 
@@ -13,14 +12,20 @@
 #include <rtthread.h>
 
 /* ============================================================================
- *  Custom waveform data arrays for specific waveforms
+ *  自定义波形数据数组
  * ===========================================================================*/
 
 /**
- * @brief  Burst pulse waveform (64 points).
- *         First 32 points at full amplitude (burst ON), last 32 at zero (burst OFF).
- *         Used by Waveform 2 (Burst Train) to create 10 Hz burst envelope
- *         within 50 Hz carrier.
+ * @brief 突发脉冲波形（64 点）
+ *
+ * 波形结构：
+ * - 前 32 个点：幅值 1.0（突发 ON，满幅输出）
+ * - 后 32 个点：幅值 0.0（突发 OFF，无输出）
+ *
+ * 用于 Waveform 2（Burst Train），在 50 Hz 载波内实现 10 Hz 突发包络。
+ * 占空比：50%（32/64），产生间歇性刺激效果。
+ *
+ * @see g_waveform_configs[1]（Waveform 2 配置）
  */
 static float burst_pulse_waveform_64[64] =
 {
@@ -35,10 +40,19 @@ static float burst_pulse_waveform_64[64] =
 };
 
 /**
- * @brief  Deep sculpt pulse waveform (128 points).
- *         Alternating high/low pattern simulating 4 kHz carrier modulated
- *         by 40~50 Hz envelope. Each pair of points forms one carrier cycle.
- *         Envelope: first 80 points active, last 48 points decay.
+ * @brief 深层塑形脉冲波形（128 点）
+ *
+ * 波形结构：
+ * - 前 80 个点：幅值 1.0（载波活跃区域）
+ * - 后 48 个点：从 0.9 线性衰减到 0.0（衰减区域）
+ *
+ * 衰减规律：每 2 个点为一组，幅度递减 0.1（0.9→0.8→0.7→...→0.0）。
+ * 模拟 4 kHz 载波被 40~50 Hz 包络调制的效果。
+ * 每对相邻点构成一个载波周期。
+ *
+ * 用于 Waveform 4（Deep Sculpt），实现深层组织塑形刺激。
+ *
+ * @see g_waveform_configs[3]（Waveform 4 配置）
  */
 static float deep_sculpt_pulse_128[128] =
 {
@@ -62,187 +76,188 @@ static float deep_sculpt_pulse_128[128] =
 };
 
 /* ============================================================================
- *  Global waveform configuration array
+ *  全局波形配置数组
+ *
  *  PCLK = 2 MHz
  *  half_wave_clk = PCLK / (2 * frequency)
- *  silent_time = pulse_width_us * 2  (since PCLK = 2 MHz, 1 us = 2 clocks)
+ *  silent_time = pulse_width_us * 2  （因 PCLK = 2 MHz，1 us = 2 个时钟）
  * ===========================================================================*/
 
 const waveform_config_t g_waveform_configs[WAVEFORM_COUNT] =
 {
-    /* ---- Waveform 1: Power Smooth ---- */
+    /* ---- Waveform 1: Power Smooth（强力平滑）---- */
     {
         .id              = 1,
         .name            = "Power Smooth",
         .description     = "Strong smoothing symmetric square wave",
-        .min_current     = 30,
-        .max_current     = 80,
-        .frequency       = 50,
-        .pulse_width_us  = 300,
-        .waveform_type   = WAVEFORM_TYPE_SQUARE,
-        .gen_method      = GEN_METHOD_PRELOADED,
-        .point_num       = 64,
-        .half_wave_clk   = 20000,   /* 2000000 / (2*50) */
-        .silent_time     = 600,     /* 300 * 2 */
-        .rest_time       = 0,
-        .carrier_clk     = 0,
-        .am_interval     = 0,
-        .waveform_data   = NULL     /* Preloaded, no custom data */
+        .min_current     = 30,       /* 最小输出电流 30 mA */
+        .max_current     = 80,       /* 最大输出电流 80 mA */
+        .frequency       = 50,       /* 波形频率 50 Hz */
+        .pulse_width_us  = 300,      /* 脉冲宽度 300 us */
+        .waveform_type   = WAVEFORM_TYPE_SQUARE,     /* 方波类型 */
+        .gen_method      = GEN_METHOD_PRELOADED,      /* 使用预加载波形 */
+        .point_num       = 64,       /* 64 点采样 */
+        .half_wave_clk   = 20000,   /* 2000000 / (2*50) = 20000 */
+        .silent_time     = 600,     /* 300 * 2 = 600 */
+        .rest_time       = 0,       /* 无死区 */
+        .carrier_clk     = 0,       /* 非 AM 模式 */
+        .am_interval     = 0,       /* 非 AM 模式 */
+        .waveform_data   = NULL     /* 预加载模式，无需自定义数据 */
     },
 
-    /* ---- Waveform 2: Burst Train ---- */
+    /* ---- Waveform 2: Burst Train（突发脉冲串）---- */
     {
         .id              = 2,
         .name            = "Burst Train",
         .description     = "Burst pulse train at 10 Hz repetition",
         .min_current     = 30,
         .max_current     = 80,
-        .frequency       = 50,
+        .frequency       = 50,       /* 载波频率 50 Hz */
         .pulse_width_us  = 300,
-        .waveform_type   = WAVEFORM_TYPE_BURST,
-        .gen_method      = GEN_METHOD_CUSTOM_SPI,
+        .waveform_type   = WAVEFORM_TYPE_BURST,       /* 突发类型 */
+        .gen_method      = GEN_METHOD_CUSTOM_SPI,      /* 使用 SPI 自定义波形 */
         .point_num       = 64,
-        .half_wave_clk   = 20000,   /* 2000000 / (2*50) */
-        .silent_time     = 600,     /* 300 * 2 */
+        .half_wave_clk   = 20000,   /* 2000000 / (2*50) = 20000 */
+        .silent_time     = 600,     /* 300 * 2 = 600 */
         .rest_time       = 0,
         .carrier_clk     = 0,
         .am_interval     = 0,
-        .waveform_data   = burst_pulse_waveform_64
+        .waveform_data   = burst_pulse_waveform_64  /* 突发脉冲数据 */
     },
 
-    /* ---- Waveform 3: Gentle Smooth ---- */
+    /* ---- Waveform 3: Gentle Smooth（柔和光滑）---- */
     {
         .id              = 3,
         .name            = "Gentle Smooth",
         .description     = "Gentle smoothing symmetric square wave",
-        .min_current     = 20,
-        .max_current     = 60,
-        .frequency       = 35,
+        .min_current     = 20,       /* 较低的最小电流 */
+        .max_current     = 60,       /* 较低的最大电流 */
+        .frequency       = 35,       /* 较低频率 35 Hz */
         .pulse_width_us  = 300,
         .waveform_type   = WAVEFORM_TYPE_SQUARE,
         .gen_method      = GEN_METHOD_PRELOADED,
         .point_num       = 64,
-        .half_wave_clk   = 28571,   /* 2000000 / (2*35) */
-        .silent_time     = 600,     /* 300 * 2 */
+        .half_wave_clk   = 28571,   /* 2000000 / (2*35) = 28571 */
+        .silent_time     = 600,     /* 300 * 2 = 600 */
         .rest_time       = 0,
         .carrier_clk     = 0,
         .am_interval     = 0,
         .waveform_data   = NULL
     },
 
-    /* ---- Waveform 4: Deep Sculpt ---- */
+    /* ---- Waveform 4: Deep Sculpt（深层塑形）---- */
     {
         .id              = 4,
         .name            = "Deep Sculpt",
         .description     = "Deep sculpting with 4 kHz carrier",
         .min_current     = 30,
         .max_current     = 80,
-        .frequency       = 50,
-        .pulse_width_us  = 250,     /* 4 kHz carrier period */
-        .waveform_type   = WAVEFORM_TYPE_BALANCED_SQUARE,
+        .frequency       = 50,       /* 包络频率 50 Hz */
+        .pulse_width_us  = 250,      /* 4 kHz 载波半周期 250 us */
+        .waveform_type   = WAVEFORM_TYPE_BALANCED_SQUARE, /* 平衡方波 */
         .gen_method      = GEN_METHOD_CUSTOM_SPI,
-        .point_num       = 128,
-        .half_wave_clk   = 20000,   /* 2000000 / (2*50) */
-        .silent_time     = 250,     /* 2000000 / (2*4000) */
+        .point_num       = 128,      /* 128 点高精度 */
+        .half_wave_clk   = 20000,   /* 2000000 / (2*50) = 20000 */
+        .silent_time     = 250,     /* 2000000 / (2*4000) = 250（载波周期） */
         .rest_time       = 0,
         .carrier_clk     = 0,
         .am_interval     = 0,
-        .waveform_data   = deep_sculpt_pulse_128
+        .waveform_data   = deep_sculpt_pulse_128  /* 深层塑形脉冲数据 */
     },
 
-    /* ---- Waveform 5: Soft Sculpt ---- */
+    /* ---- Waveform 5: Soft Sculpt（柔和塑形）---- */
     {
         .id              = 5,
         .name            = "Soft Sculpt",
         .description     = "Soft sculpting sine wave",
         .min_current     = 30,
         .max_current     = 80,
-        .frequency       = 40,
-        .pulse_width_us  = 0,
-        .waveform_type   = WAVEFORM_TYPE_SINE,
+        .frequency       = 40,       /* 正弦波频率 40 Hz */
+        .pulse_width_us  = 0,        /* 正弦波无脉冲宽度 */
+        .waveform_type   = WAVEFORM_TYPE_SINE,          /* 正弦波 */
         .gen_method      = GEN_METHOD_CUSTOM_SPI,
-        .point_num       = 128,
-        .half_wave_clk   = 25000,   /* 2000000 / (2*40) */
-        .silent_time     = 0,
+        .point_num       = 128,      /* 128 点高精度正弦 */
+        .half_wave_clk   = 25000,   /* 2000000 / (2*40) = 25000 */
+        .silent_time     = 0,       /* 无静默期 */
         .rest_time       = 0,
         .carrier_clk     = 0,
         .am_interval     = 0,
-        .waveform_data   = normalized_sine_waveform_128
+        .waveform_data   = normalized_sine_waveform_128  /* 128 点正弦数据 */
     },
 
-    /* ---- Waveform 6: Circulation Sculpt ---- */
+    /* ---- Waveform 6: Circulation Sculpt（循环塑形）---- */
     {
         .id              = 6,
         .name            = "Circulation Sculpt",
         .description     = "Circulation sculpting with 4 kHz carrier AM",
         .min_current     = 20,
         .max_current     = 60,
-        .frequency       = 10,
-        .pulse_width_us  = 0,
-        .waveform_type   = WAVEFORM_TYPE_BALANCED_SINE,
-        .gen_method      = GEN_METHOD_AMPLITUDE_MOD,
-        .point_num       = 64,
-        .half_wave_clk   = 0,       /* AM mode uses carrier_clk */
+        .frequency       = 10,       /* 包络频率 10 Hz */
+        .pulse_width_us  = 0,        /* AM 模式无脉冲宽度 */
+        .waveform_type   = WAVEFORM_TYPE_BALANCED_SINE,  /* 平衡正弦（AM） */
+        .gen_method      = GEN_METHOD_AMPLITUDE_MOD,     /* 幅度调制模式 */
+        .point_num       = 64,       /* 包络 64 点 */
+        .half_wave_clk   = 0,       /* AM 模式不使用此参数 */
         .silent_time     = 0,
         .rest_time       = 0,
-        .carrier_clk     = 250,     /* 2000000 / (2*4000) */
-        .am_interval     = 3125,    /* 2000000 / (64*10) */
-        .waveform_data   = normalized_sine_waveform_64
+        .carrier_clk     = 250,     /* 2000000 / (2*4000) = 250（4 kHz 载波） */
+        .am_interval     = 3125,    /* 2000000 / (64*10) = 3125（包络更新间隔） */
+        .waveform_data   = normalized_sine_waveform_64   /* 64 点正弦包络 */
     },
 
-    /* ---- Waveform 7: Smooth & Firm ---- */
+    /* ---- Waveform 7: Smooth & Firm（光滑紧致）---- */
     {
         .id              = 7,
         .name            = "Smooth & Firm",
         .description     = "Smooth and firm triangle wave",
-        .min_current     = 15,
+        .min_current     = 15,       /* 较低电流 */
         .max_current     = 50,
-        .frequency       = 100,
-        .pulse_width_us  = 400,
-        .waveform_type   = WAVEFORM_TYPE_TRIANGLE,
-        .gen_method      = GEN_METHOD_PRELOADED,
+        .frequency       = 100,      /* 高频 100 Hz */
+        .pulse_width_us  = 400,      /* 脉冲宽度 400 us */
+        .waveform_type   = WAVEFORM_TYPE_TRIANGLE,       /* 三角波 */
+        .gen_method      = GEN_METHOD_PRELOADED,          /* 预加载模式 */
         .point_num       = 64,
-        .half_wave_clk   = 10000,   /* 2000000 / (2*100) */
-        .silent_time     = 800,     /* 400 * 2 */
+        .half_wave_clk   = 10000,   /* 2000000 / (2*100) = 10000 */
+        .silent_time     = 800,     /* 400 * 2 = 800 */
         .rest_time       = 0,
         .carrier_clk     = 0,
         .am_interval     = 0,
         .waveform_data   = NULL
     },
 
-    /* ---- Waveform 8: Lymphatic Drainage ---- */
+    /* ---- Waveform 8: Lymphatic Drainage（淋巴引流）---- */
     {
         .id              = 8,
         .name            = "Lymphatic Drainage",
         .description     = "Low-frequency sine for lymphatic drainage",
-        .min_current     = 15,
+        .min_current     = 15,       /* 低电流 */
         .max_current     = 40,
-        .frequency       = 5,
+        .frequency       = 5,        /* 极低频率 5 Hz */
         .pulse_width_us  = 450,
         .waveform_type   = WAVEFORM_TYPE_SINE,
         .gen_method      = GEN_METHOD_CUSTOM_SPI,
         .point_num       = 64,
-        .half_wave_clk   = 200000,  /* 2000000 / (2*5) */
-        .silent_time     = 900,     /* 450 * 2 */
+        .half_wave_clk   = 200000,  /* 2000000 / (2*5) = 200000 */
+        .silent_time     = 900,     /* 450 * 2 = 900 */
         .rest_time       = 0,
         .carrier_clk     = 0,
         .am_interval     = 0,
-        .waveform_data   = normalized_sine_waveform_64
+        .waveform_data   = normalized_sine_waveform_64   /* 64 点正弦 */
     },
 
-    /* ---- Waveform 9: Soothing Ending ---- */
+    /* ---- Waveform 9: Soothing Ending（舒缓收尾）---- */
     {
         .id              = 9,
         .name            = "Soothing Ending",
         .description     = "Soothing ending sine wave",
-        .min_current     = 10,
+        .min_current     = 10,       /* 最低电流 */
         .max_current     = 30,
-        .frequency       = 10,
-        .pulse_width_us  = 0,
+        .frequency       = 10,       /* 低频 10 Hz */
+        .pulse_width_us  = 0,        /* 无脉冲宽度 */
         .waveform_type   = WAVEFORM_TYPE_SINE,
-        .gen_method      = GEN_METHOD_PRELOADED,
+        .gen_method      = GEN_METHOD_PRELOADED,          /* 预加载模式 */
         .point_num       = 64,
-        .half_wave_clk   = 100000,  /* 2000000 / (2*10) */
+        .half_wave_clk   = 100000,  /* 2000000 / (2*10) = 100000 */
         .silent_time     = 0,
         .rest_time       = 0,
         .carrier_clk     = 0,
@@ -252,8 +267,18 @@ const waveform_config_t g_waveform_configs[WAVEFORM_COUNT] =
 };
 
 /* ============================================================================
- *  Helper: Map preloaded waveform type to NNC6521 WaveformSelect_t
+ *  内部辅助函数：波形类型到 NNC6521 预加载枚举的映射
  * ===========================================================================*/
+
+/**
+ * @brief 将波形类型映射为 NNC6521 预加载波形枚举值
+ *
+ * @param[in] waveform_type 波形类型（WAVEFORM_TYPE_xxx）
+ * @return NNC6521 预加载波形枚举（WAVEFORM_PULSE / WAVEFORM_TRIANGLE / WAVEFORM_SINE）
+ *
+ * @note 方波和突发类型映射为 WAVEFORM_PULSE
+ * @note 正弦和平衡正弦类型映射为 WAVEFORM_SINE
+ */
 static uint8_t get_preloaded_type(uint8_t waveform_type)
 {
     switch (waveform_type) {
@@ -271,8 +296,20 @@ static uint8_t get_preloaded_type(uint8_t waveform_type)
 }
 
 /* ============================================================================
- *  Public: Calculate actual current from percentage
+ *  公共接口：计算实际输出电流
  * ===========================================================================*/
+
+/**
+ * @brief 根据波形 ID 和百分比计算实际输出电流
+ *
+ * 计算公式：actual_current = min_current + (max_current - min_current) * percent / 100
+ *
+ * @param[in] waveform_id 波形编号（1~WAVEFORM_COUNT）
+ * @param[in] percent     电流百分比（0~100）
+ * @return 实际输出电流（单位：mA），参数无效时返回 0
+ *
+ * @see waveform_apply()
+ */
 uint32_t waveform_calc_current(uint8_t waveform_id, uint8_t percent)
 {
     if (waveform_id < 1 || waveform_id > WAVEFORM_COUNT) return 0;
@@ -284,8 +321,17 @@ uint32_t waveform_calc_current(uint8_t waveform_id, uint8_t percent)
 }
 
 /* ============================================================================
- *  Public: Get waveform configuration by ID
+ *  公共接口：获取波形配置
  * ===========================================================================*/
+
+/**
+ * @brief 根据波形 ID 获取配置结构体指针
+ *
+ * @param[in] waveform_id 波形编号（1~WAVEFORM_COUNT）
+ * @return 配置结构体指针，参数无效时返回 NULL
+ *
+ * @see g_waveform_configs
+ */
 const waveform_config_t* waveform_get_config(uint8_t waveform_id)
 {
     if (waveform_id < 1 || waveform_id > WAVEFORM_COUNT) return NULL;
@@ -293,8 +339,30 @@ const waveform_config_t* waveform_get_config(uint8_t waveform_id)
 }
 
 /* ============================================================================
- *  Public: Apply waveform to NNC6521
+ *  公共接口：应用波形到 NNC6521
  * ===========================================================================*/
+
+/**
+ * @brief 将指定波形应用到 NNC6521 芯片
+ *
+ * 根据波形配置的生成方法（gen_method）自动选择对应的 NNC6521 API：
+ * - GEN_METHOD_PRELOADED：调用 nnc6521_preloaded_waveform()，使用内置波形
+ * - GEN_METHOD_CUSTOM_SPI：调用 nnc6521_customized_waveform()，传输自定义数据
+ * - GEN_METHOD_AMPLITUDE_MOD：调用 nnc6521_amplitude_modulation()，AM 调制
+ *
+ * @param[in] chip_id       芯片编号
+ * @param[in] channel       通道编号
+ * @param[in] waveform_id   波形编号（1~WAVEFORM_COUNT）
+ * @param[in] percent       电流百分比（0~100）
+ *
+ * @note CI（电流索引）默认值为 4，提供合理的驱动范围
+ * @note 自定义 SPI 波形使用非对称模式（asymmetric = 0）
+ *
+ * @see nnc6521_preloaded_waveform()
+ * @see nnc6521_customized_waveform()
+ * @see nnc6521_amplitude_modulation()
+ * @see waveform_calc_current()
+ */
 void waveform_apply(uint8_t chip_id, uint8_t channel,
                     uint8_t waveform_id, uint8_t percent)
 {

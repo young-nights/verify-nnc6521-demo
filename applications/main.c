@@ -20,7 +20,16 @@
 #include <rtdbg.h>
 
 /**
-  * @brief  The application entry point.
+  * @brief  应用程序主入口
+  *
+  * 主流程：
+  * 1. HAL 初始化（复位外设、Flash 接口、SysTick）
+  * 2. 系统时钟配置
+  * 3. GPIO 和串口外设初始化
+  * 4. NNC6521 双芯片初始化（GPIO + CHIP_EN 上电序列）
+  * 5. 应用默认波形并输出波形信息到串口
+  * 6. 主循环：K1 按键检测 → 波形切换 → 串口输出
+  *
   * @retval int
   */
 int main(void)
@@ -30,43 +39,43 @@ int main(void)
 
   /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+  /* MCU 配置 --------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  /* 复位所有外设，初始化 Flash 接口和 SysTick */
   HAL_Init();
 
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
 
-  /* Configure the system clock */
+  /* 配置系统时钟 */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
+  /* 初始化所有配置的外设 */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  /* Initialize NNC6521 GPIO and both chips */
+  /* 初始化 NNC6521 GPIO 引脚和双芯片上电 */
   nnc6521_gpio_init();
-  nnc6521_init(NNC6521_CHIP_1);
-  nnc6521_init(NNC6521_CHIP_2);
+  nnc6521_init(NNC6521_CHIP_1);   /* 芯片 1 上电初始化（CHIP_EN = PC5） */
+  nnc6521_init(NNC6521_CHIP_2);   /* 芯片 2 上电初始化（CHIP_EN = PC7） */
 
-  /* Waveform switching state */
-  uint8_t current_waveform_id = 1;  /* Start with waveform 1 */
-  uint8_t current_percent = WAVEFORM_DEFAULT_PCT;
-  uint8_t k1_last_state = 1;       /* PC0: high = released */
-  uint8_t k1_pressed = 0;
+  /* 波形切换状态变量 */
+  uint8_t current_waveform_id = 1;  /* 当前波形编号，从 Waveform 1 开始 */
+  uint8_t current_percent = WAVEFORM_DEFAULT_PCT;  /* 默认电流百分比 */
+  uint8_t k1_last_state = 1;       /* K1 上次状态：高电平 = 释放 */
+  uint8_t k1_pressed = 0;          /* K1 按下标志 */
 
-  /* Apply initial waveform */
+  /* 应用初始波形 */
   waveform_apply(NNC6521_CHIP_1, WAVEFORM_GEN_CH0,
                  current_waveform_id, current_percent);
 
-  /* Print initial waveform info */
+  /* 通过串口输出初始波形信息 */
   {
       const waveform_config_t *cfg = waveform_get_config(current_waveform_id);
       if (cfg != NULL) {
@@ -82,7 +91,7 @@ int main(void)
 
   /* USER CODE END 2 */
 
-  /* Infinite loop */
+  /* 主循环 */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
@@ -90,11 +99,11 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    /* K1 button detection (PC0, active low) with debouncing */
+    /* K1 按键检测（PC0，低电平有效）：下降沿检测 + 50ms 去抖 */
     uint8_t k1_current = (uint8_t)HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
 
+    /* 下降沿检测：上次高电平 + 当前低电平 = 按键按下事件 */
     if (k1_last_state == 1 && k1_current == 0) {
-        /* Falling edge detected -> button press */
         k1_pressed = 1;
     }
     k1_last_state = k1_current;
@@ -102,20 +111,20 @@ int main(void)
     if (k1_pressed) {
         k1_pressed = 0;
 
-        /* Cycle to next waveform (1 -> 2 -> ... -> 9 -> 1) */
+        /* 切换到下一个波形（1 → 2 → ... → 9 → 1 循环） */
         current_waveform_id++;
         if (current_waveform_id > WAVEFORM_COUNT) {
             current_waveform_id = 1;
         }
 
-        /* Disable current waveform before switching */
+        /* 切换前先禁用当前波形输出 */
         nnc6521_awg_enable_disable(NNC6521_CHIP_1, WAVEFORM_GEN_CH0, 0);
 
-        /* Apply new waveform */
+        /* 应用新波形 */
         waveform_apply(NNC6521_CHIP_1, WAVEFORM_GEN_CH0,
                        current_waveform_id, current_percent);
 
-        /* Print waveform info */
+        /* 通过串口输出新波形信息 */
         {
             const waveform_config_t *cfg = waveform_get_config(current_waveform_id);
             if (cfg != NULL) {
@@ -130,7 +139,7 @@ int main(void)
         }
     }
 
-    /* Debounce delay */
+    /* 50ms 去抖延时 */
     rt_thread_mdelay(50);
   }
   /* USER CODE END 3 */
