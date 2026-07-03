@@ -35,3 +35,5 @@ DebugConfig/
 RTE/
 settings/
 *.uvguix*
+.cproject
+.settings/language.settings.xml
