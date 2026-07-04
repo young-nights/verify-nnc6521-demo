@@ -130,31 +130,18 @@ void nnc6521_init(uint8_t chip_id)
             /* CHIP_EN = PC5 */
             __HAL_RCC_GPIOC_CLK_ENABLE();
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, GPIO_PIN_RESET);
-            /* 约 10ms 延时（80000 个空循环 @ 72MHz ≈ 1.1ms，实际取决于主频） */
-            {
-                volatile uint32_t delay = 80000;
-                while (delay--) __NOP();
-            }
+            rt_thread_mdelay(10);               /* CHIP_EN 拉低 10ms */
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, GPIO_PIN_SET);
-            {
-                volatile uint32_t delay = 80000;
-                while (delay--) __NOP();
-            }
+            rt_thread_mdelay(500);              /* 等待芯片内部初始化完成 */
             break;
 
         case NNC6521_CHIP_2:
             /* CHIP_EN = PC7 */
             __HAL_RCC_GPIOC_CLK_ENABLE();
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
-            {
-                volatile uint32_t delay = 80000;
-                while (delay--) __NOP();
-            }
+            rt_thread_mdelay(10);               /* CHIP_EN 拉低 10ms */
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
-            {
-                volatile uint32_t delay = 80000;
-                while (delay--) __NOP();
-            }
+            rt_thread_mdelay(500);              /* 等待芯片内部初始化完成 */
             break;
     }
 

@@ -60,6 +60,16 @@ void MX_USART1_UART_Init(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define Key1_Pin GPIO_PIN_0
+#define Key1_GPIO_Port GPIOC
+#define RAY1_Pin GPIO_PIN_0
+#define RAY1_GPIO_Port GPIOB
+#define RAY2_Pin GPIO_PIN_1
+#define RAY2_GPIO_Port GPIOB
+#define RAY3_Pin GPIO_PIN_10
+#define RAY3_GPIO_Port GPIOB
+#define RAY4_Pin GPIO_PIN_11
+#define RAY4_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
