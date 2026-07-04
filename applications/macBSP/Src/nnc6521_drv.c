@@ -9,6 +9,7 @@
   */
 
 #include "nnc6521.h"
+#include <rtthread.h>
 
 /* ============================================================================
  *  内部函数声明（电流校准相关）
@@ -781,9 +782,12 @@ void nnc6521_wavegen_config(uint8_t chip_id,
 
     /* 步骤 13：波形数据处理（仅 SPI 自定义波形模式） */
     if (wf->WG_DRV_CTRL_REG0.bits.waveform_select == WAVEFORM_SPI) {
+        rt_kprintf("[SPI] Step13: SPI waveform mode\r\n");
+
         /* 读回采样点数确认 */
         addr = WG_REG_ADDR(wf->CHANNEL, WG_DRV_POINT_CONFIG_OFFSET);
         wf->WG_DRV_POINT_CONFIG.value = nnc6521_read_wave_reg(chip_id, addr);
+        rt_kprintf("[SPI] point_num=%d\r\n", wf->WG_DRV_POINT_CONFIG.value);
 
         /* 电流校准流程：目标电流 → 12-bit DAC → 缩放 → 8-bit 适配 */
         uint16_t calibrated_CurrentArray_16bits[wf->WG_DRV_POINT_CONFIG.value];
@@ -791,7 +795,9 @@ void nnc6521_wavegen_config(uint8_t chip_id,
         uint8_t scale_up = 0;
         uint16_t max_amplitude = 0;
 
+        rt_kprintf("[SPI] OTP calibrating (max_current=%d)...\r\n", (int)max_current);
         max_amplitude = Current_Output(chip_id, max_current, wf->CHANNEL);
+        rt_kprintf("[SPI] max_amplitude=%d\r\n", max_amplitude);
         generate_scaled_wave(calibrated_CurrentArray_16bits,
                              wf->WG_DRV_POINT_CONFIG.value,
                              normalized_waveform_array, max_amplitude);
@@ -814,6 +820,7 @@ void nnc6521_wavegen_config(uint8_t chip_id,
 
             /* 逐点写入波形 RAM */
             if (normalized_waveform_array != NULL) {
+                rt_kprintf("[SPI] Writing %d points to RAM...\r\n", driver_point);
                 for (i = 0; i < driver_point; i++) {
                     nnc6521_write_wave_reg(chip_id,
                         WG_REG_ADDR(wf->CHANNEL, WG_DRV_IN_WAVE_ADDR_OFFSET), i);
@@ -821,6 +828,7 @@ void nnc6521_wavegen_config(uint8_t chip_id,
                         WG_REG_ADDR(wf->CHANNEL, WG_DRV_IN_WAVE_OFFSET),
                         *(calibrated_CurrentArray_8bits + i));
                 }
+                rt_kprintf("[SPI] RAM write done\r\n");
             }
         }
     } else {

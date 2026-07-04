@@ -111,18 +111,26 @@ int main(void)
     if (k1_pressed) {
         k1_pressed = 0;
 
+        rt_kprintf("\r\n[DBG] Key pressed! Current=#%d\r\n", current_waveform_id);
+
         /* 切换到下一个波形（1 → 2 → ... → 9 → 1 循环） */
         current_waveform_id++;
         if (current_waveform_id > WAVEFORM_COUNT) {
             current_waveform_id = 1;
         }
 
+        rt_kprintf("[DBG] Target=#%d, disabling AWG...\r\n", current_waveform_id);
+
         /* 切换前先禁用当前波形输出 */
         nnc6521_awg_enable_disable(NNC6521_CHIP_1, WAVEFORM_GEN_CH0, 0);
+
+        rt_kprintf("[DBG] AWG disabled, applying waveform...\r\n");
 
         /* 应用新波形 */
         waveform_apply(NNC6521_CHIP_1, WAVEFORM_GEN_CH0,
                        current_waveform_id, current_percent);
+
+        rt_kprintf("[DBG] Waveform #%d applied OK\r\n", current_waveform_id);
 
         /* 通过串口输出新波形信息 */
         {
