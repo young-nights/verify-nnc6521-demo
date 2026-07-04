@@ -37,7 +37,6 @@ void rt_hw_board_init()
 
 
 
-
 /**
   * Initializes the Global MSP.
   */
