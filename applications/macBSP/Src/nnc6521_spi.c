@@ -225,14 +225,14 @@ void nnc6521_spi_write(uint8_t chip_id, uint8_t addr, uint8_t data, uint8_t is_w
     uint8_t cmd = is_wave ? 0xC0 : 0x80;
 
     HAL_GPIO_WritePin(p->csn_port, p->csn_pin, GPIO_PIN_RESET);
-    __NOP(); __NOP(); __NOP(); __NOP();  /* CSN setup time */
+    __NOP(); __NOP(); __NOP(); __NOP();
 
     spi_sw_transfer_byte(chip_id, addr);
     spi_sw_transfer_byte(chip_id, cmd);
-    spi_sw_transfer_byte(chip_id, 0x11);
-    spi_sw_transfer_byte(chip_id, data);
+    spi_sw_transfer_byte(chip_id, data);   /* data in byte 2 */
+    spi_sw_transfer_byte(chip_id, 0x00);   /* dummy byte 3 */
 
-    __NOP(); __NOP(); __NOP(); __NOP();  /* CSN hold time */
+    __NOP(); __NOP(); __NOP(); __NOP();
     HAL_GPIO_WritePin(p->csn_port, p->csn_pin, GPIO_PIN_SET);
 }
 
