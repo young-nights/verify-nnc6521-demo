@@ -162,21 +162,28 @@ static uint8_t spi_sw_transfer_byte(uint8_t chip_id, uint8_t tx_byte)
 
     for (int8_t bit = 7; bit >= 0; bit--)
     {
-        /* MOSI：在 SCLK 下降沿后设置数据 */
+        /* MOSI setup: set data before clock edge */
         if (tx_byte & (1 << bit))
             HAL_GPIO_WritePin(p->mosi_port, p->mosi_pin, GPIO_PIN_SET);
         else
             HAL_GPIO_WritePin(p->mosi_port, p->mosi_pin, GPIO_PIN_RESET);
 
-        /* SCLK 上升沿 → 从机锁存 MOSI，主机锁存 MISO */
+        __NOP(); __NOP(); __NOP(); __NOP();  /* Data setup time (~55ns @ 72MHz) */
+
+        /* SCLK rising edge: slave latches MOSI, master latches MISO */
         HAL_GPIO_WritePin(p->sclk_port, p->sclk_pin, GPIO_PIN_SET);
 
-        /* 读取 MISO */
+        __NOP(); __NOP(); __NOP(); __NOP();  /* Clock high time (~55ns) */
+        __NOP(); __NOP(); __NOP(); __NOP();  /* Extra margin for NNC6521 */
+
+        /* Read MISO */
         if (HAL_GPIO_ReadPin(p->miso_port, p->miso_pin) == GPIO_PIN_SET)
             rx_byte |= (1 << bit);
 
-        /* SCLK 下降沿 */
+        /* SCLK falling edge */
         HAL_GPIO_WritePin(p->sclk_port, p->sclk_pin, GPIO_PIN_RESET);
+
+        __NOP(); __NOP(); __NOP(); __NOP();  /* Clock low time */
     }
 
     return rx_byte;
@@ -217,19 +224,15 @@ void nnc6521_spi_write(uint8_t chip_id, uint8_t addr, uint8_t data, uint8_t is_w
     const nnc6521_pin_map_t *p = &nnc6521_pins[chip_id];
     uint8_t cmd = is_wave ? 0xC0 : 0x80;
 
-    /* 拉低 CSN，开始传输 */
     HAL_GPIO_WritePin(p->csn_port, p->csn_pin, GPIO_PIN_RESET);
+    __NOP(); __NOP(); __NOP(); __NOP();  /* CSN setup time */
 
-    /* 字节 0：地址 */
     spi_sw_transfer_byte(chip_id, addr);
-    /* 字节 1：命令 */
     spi_sw_transfer_byte(chip_id, cmd);
-    /* 字节 2：数据标记 */
     spi_sw_transfer_byte(chip_id, 0x11);
-    /* 字节 3：数据 */
     spi_sw_transfer_byte(chip_id, data);
 
-    /* 拉高 CSN，结束传输 */
+    __NOP(); __NOP(); __NOP(); __NOP();  /* CSN hold time */
     HAL_GPIO_WritePin(p->csn_port, p->csn_pin, GPIO_PIN_SET);
 }
 
@@ -260,17 +263,14 @@ uint8_t nnc6521_spi_read(uint8_t chip_id, uint8_t addr, uint8_t is_wave)
     uint8_t cmd = is_wave ? 0x40 : 0x00;
     uint8_t rx[3];
 
-    /* 拉低 CSN，开始传输 */
     HAL_GPIO_WritePin(p->csn_port, p->csn_pin, GPIO_PIN_RESET);
+    __NOP(); __NOP(); __NOP(); __NOP();
 
-    /* 字节 0：地址 */
     rx[0] = spi_sw_transfer_byte(chip_id, addr);
-    /* 字节 1：命令 */
     rx[1] = spi_sw_transfer_byte(chip_id, cmd);
-    /* 字节 2：空读，实际数据在 MISO 上返回 */
     rx[2] = spi_sw_transfer_byte(chip_id, 0x00);
 
-    /* 拉高 CSN，结束传输 */
+    __NOP(); __NOP(); __NOP(); __NOP();
     HAL_GPIO_WritePin(p->csn_port, p->csn_pin, GPIO_PIN_SET);
 
     return rx[2];
