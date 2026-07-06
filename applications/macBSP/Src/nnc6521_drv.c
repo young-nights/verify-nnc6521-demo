@@ -851,6 +851,27 @@ void nnc6521_wavegen_config(uint8_t chip_id,
     /* 步骤 15：最后写入控制寄存器，使能波形发生器 */
     addr = WG_REG_ADDR(wf->CHANNEL, WG_DRV_CTRL_REG0_OFFSET);
     nnc6521_write_wave_reg(chip_id, addr, wf->WG_DRV_CTRL_REG0.value);
+
+    /* Read-back verification */
+    {
+        uint8_t verify = nnc6521_read_wave_reg(chip_id, addr);
+        rt_kprintf("[SPI] CTRL_REG0 wrote=0x%02X read=0x%02X\r\n",
+                   wf->WG_DRV_CTRL_REG0.value, verify);
+
+        addr = WG_REG_ADDR(wf->CHANNEL, WG_DRV_POINT_CONFIG_OFFSET);
+        verify = nnc6521_read_wave_reg(chip_id, addr);
+        rt_kprintf("[SPI] POINT_CONFIG read=0x%02X\r\n", verify);
+
+        addr = WG_REG_ADDR(wf->CHANNEL, WG_DRV_CONFIG_REG0_OFFSET);
+        verify = nnc6521_read_wave_reg(chip_id, addr);
+        rt_kprintf("[SPI] CONFIG_REG0 read=0x%02X\r\n", verify);
+
+        /* Read PMU and global reg to verify chip communication */
+        verify = nnc6521_read_reg(chip_id, PMU_REG_ADDR);
+        rt_kprintf("[SPI] PMU_REG read=0x%02X\r\n", verify);
+        verify = nnc6521_read_reg(chip_id, WAVEGEN_GLOBAL_REG_0);
+        rt_kprintf("[SPI] GLOBAL_REG0 read=0x%02X\r\n", verify);
+    }
 }
 
 /**
