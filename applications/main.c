@@ -42,22 +42,22 @@ int main(void)
   /* MCU 配置 --------------------------------------------------------*/
 
   /* 复位所有外设，初始化 Flash 接口和 SysTick */
-//  HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
 
   /* 配置系统时钟 */
-//  SystemClock_Config();
+  SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
 
   /* 初始化所有配置的外设 */
-//  MX_GPIO_Init();
-//  MX_USART1_UART_Init();
+  MX_GPIO_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* 初始化 NNC6521 GPIO 引脚和双芯片上电 */
