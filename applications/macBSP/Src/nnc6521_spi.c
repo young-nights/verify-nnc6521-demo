@@ -117,6 +117,25 @@ void nnc6521_gpio_init(void)
         gpio.Pin = p->intb_pin;
         HAL_GPIO_Init(p->intb_port, &gpio);
     }
+
+    /* Output enable signals (PB0/PB1/PB10/PB11, active high) */
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_AFIO_CLK_ENABLE();
+
+    gpio.Pin   = GPIO_PIN_0 | GPIO_PIN_1;
+    gpio.Mode  = GPIO_MODE_OUTPUT_PP;
+    gpio.Pull  = GPIO_NOPULL;
+    gpio.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &gpio);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0 | GPIO_PIN_1, GPIO_PIN_SET);
+
+    gpio.Pin = GPIO_PIN_10;
+    HAL_GPIO_Init(GPIOB, &gpio);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+
+    gpio.Pin = GPIO_PIN_11;
+    HAL_GPIO_Init(GPIOB, &gpio);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
 }
 
 /* ============================================================================
