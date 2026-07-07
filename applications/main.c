@@ -103,11 +103,15 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    /* K1 按键检测（PC0，低电平有效）：下降沿检测 + 50ms 去抖 */
+    /* K1 button detection (PC0, active-low): wait for release after press */
     uint8_t k1_current = (uint8_t)HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
 
-    /* 下降沿检测：上次高电平 + 当前低电平 = 按键按下事件 */
-    if (k1_last_state == 1 && k1_current == 0) {
+    if (k1_current == 0 && k1_last_state == 1) {
+        /* Falling edge detected, wait for button release */
+        rt_thread_mdelay(50);  /* debounce */
+        while ((uint8_t)HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0) == 0) {
+            rt_thread_mdelay(10);  /* wait until released */
+        }
         k1_pressed = 1;
     }
     k1_last_state = k1_current;
