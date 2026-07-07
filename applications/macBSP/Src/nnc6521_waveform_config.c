@@ -226,6 +226,9 @@ const waveform_config_t g_waveform_configs[WAVEFORM_COUNT] =
     },
 
     /* ---- Waveform 8: Lymphatic Drainage（淋巴引流）---- */
+    /* NOTE: Requires PCLK_DIV_16 (PCLK=125kHz). With PCLK/16:
+     *   half_wave_clk = 125000 / (2*5) = 12500 (fits uint16_t)
+     *   silent_time   = 125000 * 450e-6 ≈ 56 */
     {
         .id              = 8,
         .name            = "Lymphatic Drainage",
@@ -237,8 +240,8 @@ const waveform_config_t g_waveform_configs[WAVEFORM_COUNT] =
         .waveform_type   = WAVEFORM_TYPE_SINE,
         .gen_method      = GEN_METHOD_CUSTOM_SPI,
         .point_num       = 64,
-        .half_wave_clk   = 200000,  /* 2000000 / (2*5) = 200000 */
-        .silent_time     = 900,     /* 450 * 2 = 900 */
+        .half_wave_clk   = 12500,   /* PCLK/16: 125000/(2*5) = 12500 */
+        .silent_time     = 56,      /* PCLK/16: 125000*450e-6 ≈ 56 */
         .rest_time       = 0,
         .carrier_clk     = 0,
         .am_interval     = 0,
@@ -246,6 +249,9 @@ const waveform_config_t g_waveform_configs[WAVEFORM_COUNT] =
     },
 
     /* ---- Waveform 9: Soothing Ending（舒缓收尾）---- */
+    /* NOTE: Requires PCLK_DIV_8 (PCLK=250kHz). With PCLK/8:
+     *   half_wave_clk = 250000 / (2*10) = 12500 (fits uint16_t)
+     *   Uses custom SPI sine (not preloaded) per spec */
     {
         .id              = 9,
         .name            = "Soothing Ending",
@@ -255,16 +261,29 @@ const waveform_config_t g_waveform_configs[WAVEFORM_COUNT] =
         .frequency       = 10,       /* 低频 10 Hz */
         .pulse_width_us  = 0,        /* 无脉冲宽度 */
         .waveform_type   = WAVEFORM_TYPE_SINE,
-        .gen_method      = GEN_METHOD_PRELOADED,          /* 预加载模式 */
+        .gen_method      = GEN_METHOD_CUSTOM_SPI,         /* Custom SPI sine */
         .point_num       = 64,
-        .half_wave_clk   = 100000,  /* 2000000 / (2*10) = 100000 */
-        .silent_time     = 0,
+        .half_wave_clk   = 12500,   /* PCLK/8: 250000/(2*10) = 12500 */
+        .silent_time     = 0,       /* 连续正弦波无静默期 */
         .rest_time       = 0,
         .carrier_clk     = 0,
         .am_interval     = 0,
-        .waveform_data   = NULL
+        .waveform_data   = normalized_sine_waveform_64    /* 64 点正弦 */
     }
 };
+
+/* ============================================================================
+ *  内部辅助函数：PCLK 分频器设置
+ * ===========================================================================*/
+
+/**
+ * @brief Set PCLK divider for a NNC6521 chip.
+ *        Used for low-frequency waveforms that exceed 16-bit half-wave register.
+ */
+static void set_pclk_divider(uint8_t chip_id, uint8_t divider)
+{
+    nnc6521_write_reg(chip_id, CLK_CTRL_REG_ADDR, divider);
+}
 
 /* ============================================================================
  *  内部辅助函数：波形类型到 NNC6521 预加载枚举的映射
@@ -392,6 +411,13 @@ void waveform_apply(uint8_t chip_id, uint8_t channel,
 
         case GEN_METHOD_CUSTOM_SPI:
             if (cfg->waveform_data != NULL) {
+                /* Low-freq waveforms need reduced PCLK to fit 16-bit register */
+                if (waveform_id == 8) {
+                    set_pclk_divider(chip_id, PCLK_DIV_16);
+                } else if (waveform_id == 9) {
+                    set_pclk_divider(chip_id, PCLK_DIV_8);
+                }
+
                 nnc6521_customized_waveform(chip_id, channel,
                                             cfg->point_num,
                                             cfg->waveform_data,
@@ -401,6 +427,11 @@ void waveform_apply(uint8_t chip_id, uint8_t channel,
                                             cfg->silent_time,
                                             cfg->rest_time,
                                             0);  /* asymmetric */
+
+                /* Restore PCLK to default */
+                if (waveform_id == 8 || waveform_id == 9) {
+                    set_pclk_divider(chip_id, PCLK_DIV_1);
+                }
             }
             break;
 
