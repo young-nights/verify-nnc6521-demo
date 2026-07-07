@@ -190,23 +190,24 @@ const waveform_config_t g_waveform_configs[WAVEFORM_COUNT] =
     },
 
     /* ---- Waveform 6: Circulation Sculpt（循环塑形）---- */
+    /* Changed from AMPLITUDE_MOD to CUSTOM_SPI: pre-computed AM waveform bypasses hardware AM mode */
     {
         .id              = 6,
         .name            = "Circulation Sculpt",
-        .description     = "Circulation sculpting with 4 kHz carrier AM",
+        .description     = "Circulation sculpting with 4kHz carrier AM",
         .min_current     = 20,
         .max_current     = 60,
         .frequency       = 10,       /* 包络频率 10 Hz */
-        .pulse_width_us  = 0,        /* AM 模式无脉冲宽度 */
-        .waveform_type   = WAVEFORM_TYPE_BALANCED_SINE,  /* 平衡正弦（AM） */
-        .gen_method      = GEN_METHOD_AMPLITUDE_MOD,     /* 幅度调制模式 */
-        .point_num       = 64,       /* 包络 64 点 */
-        .half_wave_clk   = 0,       /* AM 模式不使用此参数 */
+        .pulse_width_us  = 0,
+        .waveform_type   = WAVEFORM_TYPE_BALANCED_SINE,
+        .gen_method      = GEN_METHOD_CUSTOM_SPI,       /* Changed from AMPLITUDE_MOD */
+        .point_num       = 64,
+        .half_wave_clk   = 12500,   /* PCLK/8: 250000 / (2*10) = 12500 */
         .silent_time     = 0,
         .rest_time       = 0,
-        .carrier_clk     = 250,     /* 2000000 / (2*4000) = 250（4 kHz 载波） */
-        .am_interval     = 3125,    /* 2000000 / (64*10) = 3125（包络更新间隔） */
-        .waveform_data   = normalized_sine_waveform_64   /* 64 点正弦包络 */
+        .carrier_clk     = 0,        /* Not used in SPI mode */
+        .am_interval     = 0,        /* Not used in SPI mode */
+        .waveform_data   = circulation_sculpt_am_64  /* Pre-computed AM data */
     },
 
     /* ---- Waveform 7: Smooth & Firm（光滑紧致）---- */
@@ -418,7 +419,7 @@ void waveform_apply(uint8_t chip_id, uint8_t channel,
                 /* Low-freq waveforms need reduced PCLK to fit 16-bit register */
                 if (waveform_id == 8) {
                     set_pclk_divider(chip_id, PCLK_DIV_16);
-                } else if (waveform_id == 9) {
+                } else if (waveform_id == 6 || waveform_id == 9) {
                     set_pclk_divider(chip_id, PCLK_DIV_8);
                 }
 
@@ -433,7 +434,7 @@ void waveform_apply(uint8_t chip_id, uint8_t channel,
                                             0);  /* asymmetric */
 
                 /* Restore PCLK to default */
-                if (waveform_id == 8 || waveform_id == 9) {
+                if (waveform_id == 6 || waveform_id == 8 || waveform_id == 9) {
                     set_pclk_divider(chip_id, PCLK_DIV_1);
                 }
             }

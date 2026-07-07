@@ -66,6 +66,7 @@ extern float normalized_triangle_waveform_128_1[64];/**< 128 点三角波形前�
 extern float normalized_triangle_waveform_128_2[64];/**< 128 点三角波形后半段 */
 extern float normalized_pulse_waveform_128[128];    /**< 128 点归一化脉冲波形 */
 extern float normalized_user_waveform_128[128];     /**< 128 点自定义用户波形（指数衰减包络） */
+extern float circulation_sculpt_am_64[64];         /**< 64 点 AM 预计算波形（载波+包络） */
 
 /* ============================================================================
  *  GPIO 初始化
