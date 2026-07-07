@@ -432,6 +432,17 @@ void nnc6521_clear_lod_int(uint8_t chip_id);
 void nnc6521_clear_scd_int(uint8_t chip_id);
 
 /**
+ * @brief Enable analog output stage (VDAC + driver amplifier) for a channel.
+ *
+ * Must be called before waveform output to enable the analog frontend.
+ * Without this, only a digital square wave appears at the output pin.
+ *
+ * @param[in] chip_id  NNC6521_CHIP_1 or NNC6521_CHIP_2
+ * @param[in] channel  WAVEFORM_GEN_CH0 or WAVEFORM_GEN_CH1
+ */
+void nnc6521_analog_enable(uint8_t chip_id, uint8_t channel);
+
+/**
  * @brief 配置波形发生器寄存器（核心配置函数）
  *
  * 根据 waveform_TypeDef 结构体中的参数，完整配置波形发生器的所有寄存器，

@@ -65,6 +65,10 @@ int main(void)
   nnc6521_init(NNC6521_CHIP_1);   /* 芯片 1 上电初始化（CHIP_EN = PC5） */
   nnc6521_init(NNC6521_CHIP_2);   /* 芯片 2 上电初始化（CHIP_EN = PC7） */
 
+  /* Enable analog output stage (VDAC + driver amp) for CH1 on both chips */
+  nnc6521_analog_enable(NNC6521_CHIP_1, WAVEFORM_GEN_CH0);
+  nnc6521_analog_enable(NNC6521_CHIP_2, WAVEFORM_GEN_CH0);
+
   /* 波形切换状态变量 */
   uint8_t current_waveform_id = 1;  /* 当前波形编号，从 Waveform 1 开始 */
   uint8_t current_percent = WAVEFORM_DEFAULT_PCT;  /* 默认电流百分比 */

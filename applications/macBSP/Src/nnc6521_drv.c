@@ -510,6 +510,47 @@ void nnc6521_lod_init(uint8_t chip_id,
 }
 
 /**
+ * @brief Enable analog output stage (VDAC + driver amplifier) for a channel.
+ *        Must be called before waveform output, otherwise only digital square
+ *        wave appears at the output pin.
+ *
+ * @param[in] chip_id  NNC6521_CHIP_1 or NNC6521_CHIP_2
+ * @param[in] channel  WAVEFORM_GEN_CH0 or WAVEFORM_GEN_CH1
+ */
+void nnc6521_analog_enable(uint8_t chip_id, uint8_t channel)
+{
+    uint8_t data;
+
+    if (channel == WAVEFORM_GEN_CH0) {
+        /* CH1: Configure VDAC chop and driver amp current sense */
+        data = nnc6521_read_reg(chip_id, ANA_GEN_REG_3_ADDR);
+        data |= (1 << 4);  /* D2A_VDAC_AMPCHOP_CH1 */
+        data |= (1 << 2);  /* DRIVERA_CSAMP_CH_CH1 */
+        nnc6521_write_reg(chip_id, ANA_GEN_REG_3_ADDR, data);
+
+        /* CH1: Enable VDAC + comparator + driver amplifier */
+        data = nnc6521_read_reg(chip_id, ANA_ENABLE_REG_1_ADDR);
+        data |= (1 << 4);  /* VDAC_EN_CH1 */
+        data |= (1 << 2);  /* COMP_EN_CH1 */
+        data |= (1 << 1);  /* DRIVERA_CSAMP_EN_CH1 */
+        nnc6521_write_reg(chip_id, ANA_ENABLE_REG_1_ADDR, data);
+    } else {
+        /* CH2: Configure VDAC chop and driver amp current sense */
+        data = nnc6521_read_reg(chip_id, ANA_GEN_REG_5_ADDR);
+        data |= (1 << 4);  /* D2A_VDAC_AMPCHOP_CH2 */
+        data |= (1 << 2);  /* DRIVERA_CSAMP_CH_CH2 */
+        nnc6521_write_reg(chip_id, ANA_GEN_REG_5_ADDR, data);
+
+        /* CH2: Enable VDAC + comparator + driver amplifier */
+        data = nnc6521_read_reg(chip_id, ANA_ENABLE_REG_2_ADDR);
+        data |= (1 << 4);  /* VDAC_EN_CH2 */
+        data |= (1 << 2);  /* COMP_EN_CH2 */
+        data |= (1 << 1);  /* DRIVERA_CSAMP_EN_CH2 */
+        nnc6521_write_reg(chip_id, ANA_ENABLE_REG_2_ADDR, data);
+    }
+}
+
+/**
  * @brief 写入短路检测 (SCD) 完整配置
  *
  * 将 Short_detect_TypeDef 结构体中的所有配置写入对应寄存器，包括：
@@ -727,9 +768,11 @@ void nnc6521_wavegen_config(uint8_t chip_id,
 
     /* 步骤 2：使能对应通道的模拟前端 */
     if (wf->CHANNEL == WAVEFORM_GEN_CH0) {
-        nnc6521_write_reg(chip_id, ANA_ENABLE_REG_1_ADDR, 0x09);
+        nnc6521_write_reg(chip_id, ANA_ENABLE_REG_1_ADDR,
+                           nnc6521_read_reg(chip_id, ANA_ENABLE_REG_1_ADDR) | 0x09);
     } else {
-        nnc6521_write_reg(chip_id, ANA_ENABLE_REG_2_ADDR, 0x09);
+        nnc6521_write_reg(chip_id, ANA_ENABLE_REG_2_ADDR,
+                           nnc6521_read_reg(chip_id, ANA_ENABLE_REG_2_ADDR) | 0x09);
     }
 
     /* 步骤 3：采样点数寄存器 */
