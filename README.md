@@ -11,9 +11,11 @@ NNC6521 双芯片波形驱动验证工程 — 基于 RT-Thread + STM32F103RCT6
 | 项目 | 参数 |
 |------|------|
 | 主控 | STM32F103RCT6 (72 MHz, 256KB Flash, 48KB SRAM) |
+| 外部晶振 | 16 MHz HSE (DIV2 → PLL ×9 → 72 MHz) |
 | 模拟前端 | 2× NNC6521 (QFN32, 双通道恒流源驱动) |
+| NNC6521 时钟 | 内部 2 MHz PCLK（可通过寄存器 1/2/4/8/16/32/64/128 分频） |
 | RTOS | RT-Thread 5.1.0 |
-| SPI | 软件 SPI (GPIO 位操作) |
+| SPI | 软件 SPI (GPIO 位操作，CPOL=0, CPHA=0, MSB 先传) |
 
 ## 引脚映射
 
@@ -61,7 +63,7 @@ NNC6521 双芯片波形驱动验证工程 — 基于 RT-Thread + STM32F103RCT6
 | 6 | Circulation Sculpt | 10 Hz | 20~60 mA | 幅度调制 (AM) |
 | 7 | Smooth & Firm | 100 Hz | 15~50 mA | 三角波 (预加载) |
 | 8 | Lymphatic Drainage | 5 Hz | 15~40 mA | 正弦波 (SPI) |
-| 9 | Soothing Ending | 10 Hz | 10~30 mA | 正弦波 (预加载) |
+| 9 | Soothing Ending | 10 Hz | 10~30 mA | 正弦波 (SPI) |
 
 ## 目录结构
 
@@ -127,6 +129,19 @@ Waveform #1: Power Smooth
 
 按 K1 键切换波形，串口输出新波形信息。
 
+## 与 v10 正式版的差异
+
+| 项目 | verify-nnc6521-demo（本工程） | microcurrent-beauty-device-v10 |
+|------|------|------|
+| 外部晶振 | 16 MHz (HSE DIV2) | 8 MHz (HSE DIV1) |
+| 系统时钟 | 72 MHz | 72 MHz |
+| 波形切换 | K1 按键（PC0）循环切换 | 软件协议命令切换 |
+| GPIO 引脚 | Chip1: PA4~PA7/PC4~PC5 / Chip2: PB12~PB15/PC6~PC7 | Chip1: PC7~PC9/PA8/PA11~PA12 / Chip2: PB11~PB15/PC6 |
+| NTC 温控 | 无 | 有（NTC 传感器 + PID 控制） |
+| 通讯协议 | 无 | 串口协议（protocol.c） |
+
+> **注意**：NNC6521 使用内部 2 MHz 振荡器，与外部晶振无关，因此两个工程的波形时序参数完全一致。
+
 ## 关键 API
 
 ```c
@@ -157,6 +172,25 @@ nnc6521_clear_scd_int(chip_id);         // 清除 SCD 中断
 2. **继电器**：刺激输出前需确保 PB0/PB1/PB10/PB11 继电器已导通（高电平）
 3. **OTP 读取**：VPP 选择按钮需拨至 1.8V 才能读取 OTP 校准数据
 4. **示波器测量**：使用双探头 + Math 功能 (CH1-CH2) 观察双向波形
+
+## 波形技术细节
+
+### PCLK 分频策略
+
+低频波形（5 Hz、10 Hz）的半波时钟周期会超出 16-bit 寄存器范围，需要降低 PCLK：
+
+| 波形 ID | 频率 | PCLK 分频 | 实际 PCLK | half_wave_clk |
+|---------|------|----------|-----------|---------------|
+| 1~5, 7 | 35~100 Hz | ÷1 | 2 MHz | 10000~28571 |
+| 6, 9 | 10 Hz | ÷8 | 250 kHz | 12500 |
+| 8 | 5 Hz | ÷16 | 125 kHz | 12500 |
+
+### 安全检测模块
+
+本工程集成了 NNC6521 的两个硬件保护模块：
+
+- **LOD（Lead-Off Detection）**：检测电极与皮肤接触不良，可触发中断
+- **SCD（Short-Circuit Detection）**：检测输出短路，可自动停止波形输出
 
 ## 许可证
 
