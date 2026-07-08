@@ -129,19 +129,6 @@ Waveform #1: Power Smooth
 
 按 K1 键切换波形，串口输出新波形信息。
 
-## 与 v10 正式版的差异
-
-| 项目 | verify-nnc6521-demo（本工程） | microcurrent-beauty-device-v10 |
-|------|------|------|
-| 外部晶振 | 16 MHz (HSE DIV2) | 8 MHz (HSE DIV1) |
-| 系统时钟 | 72 MHz | 72 MHz |
-| 波形切换 | K1 按键（PC0）循环切换 | 软件协议命令切换 |
-| GPIO 引脚 | Chip1: PA4~PA7/PC4~PC5 / Chip2: PB12~PB15/PC6~PC7 | Chip1: PC7~PC9/PA8/PA11~PA12 / Chip2: PB11~PB15/PC6 |
-| NTC 温控 | 无 | 有（NTC 传感器 + PID 控制） |
-| 通讯协议 | 无 | 串口协议（protocol.c） |
-
-> **注意**：NNC6521 使用内部 2 MHz 振荡器，与外部晶振无关，因此两个工程的波形时序参数完全一致。
-
 ## 关键 API
 
 ```c
