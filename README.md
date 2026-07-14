@@ -134,7 +134,7 @@ Waveform #1: Power Smooth
 ```c
 // 芯片初始化
 nnc6521_gpio_init();                    // 初始化所有 GPIO
-nnc6521_init(NNC6521_CHIP_1);           // 芯片 1 上电（CHIP_EN 拉高后等待 500ms）
+nnc6521_init(NNC6521_CHIP_1);           // 芯片 1 上电（CHIP_EN 拉高后等待 5ms）
 nnc6521_init(NNC6521_CHIP_2);           // 芯片 2 上电
 
 // 波形输出
@@ -155,7 +155,7 @@ nnc6521_clear_scd_int(chip_id);         // 清除 SCD 中断
 
 ## 注意事项
 
-1. **CHIP_EN 延时**：芯片使能后需等待 ≥500ms 才能进行 SPI 通信
+1. **CHIP_EN 延时**：芯片使能后需等待 ≥5ms 才能进行 SPI 通信
 2. **继电器**：刺激输出前需确保 PB0/PB1/PB10/PB11 继电器已导通（高电平）
 3. **OTP 读取**：VPP 选择按钮需拨至 1.8V 才能读取 OTP 校准数据
 4. **示波器测量**：使用双探头 + Math 功能 (CH1-CH2) 观察双向波形

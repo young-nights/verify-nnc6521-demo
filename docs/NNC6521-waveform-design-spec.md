@@ -330,6 +330,29 @@ void nnc6521_awg_enable_disable(
 );
 ```
 
+### 5.6 SPI Communication Protocol
+
+**SPI Write Protocol**:
+```
+4 bytes: [addr, cmd, data, 0x00]
+- Normal register: cmd = 0x80
+- Waveform register: cmd = 0xC0
+- Data in byte 2, byte 3 fixed to 0x00
+```
+
+**SPI Read Protocol**:
+```
+3 bytes: [addr, cmd, dummy]
+- Normal register: cmd = 0x00
+- Waveform register: cmd = 0x40
+- Data returned in byte 3
+```
+
+**Bit-Bang Timing**:
+```
+NOP delays before/after each clock edge (~55ns @ 72MHz), meeting NNC6521 timing requirements.
+```
+
 ---
 
 ## 6. Waveform Configuration Module API
@@ -410,3 +433,4 @@ Waveform #1: Power Smooth
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | V1.0 | 2026-07-01 | Engineering Team | Initial version, define 9 waveform specs and implementation |
+| V1.1 | 2026-07-14 | Engineering Team | Added SPI communication protocol section (write/read protocol, bit-bang timing) |
