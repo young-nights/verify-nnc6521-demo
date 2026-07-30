@@ -51,15 +51,15 @@ This document defines the detailed design for **9 predefined waveforms** based o
 
 | ID | Name | Current (mA) | Freq (Hz) | Pulse Width (μs) | Type | Description |
 |----|------|-------------|-----------|-------------------|------|-------------|
-| 1 | Power Smooth | 30 ~ 80 | 50 | 300 | Symmetric Square | Strong smoothing |
-| 2 | Burst Train | 30 ~ 80 | 50 (burst 10 Hz) | 300 | Burst Train | Burst pulse train |
-| 3 | Gentle Smooth | 20 ~ 60 | 35 | 300 | Symmetric Square | Gentle smoothing |
-| 4 | Deep Sculpt | 30 ~ 80 | 40 ~ 50 | 4 kHz carrier | Balanced Square | Deep sculpting |
-| 5 | Soft Sculpt | 30 ~ 80 | 30 ~ 40 | 2 ~ 4 kHz | Sine | Soft sculpting |
-| 6 | Circulation Sculpt | 20 ~ 60 | 2 ~ 10 | 4 kHz carrier | Balanced Sine | Circulation sculpting |
-| 7 | Smooth & Firm | 15 ~ 50 | 80 ~ 100 | 400 | Triangle | Smooth & firm |
-| 8 | Lymphatic Drainage | 15 ~ 40 | 5 | 450 | Low-freq Sine | Lymphatic drainage |
-| 9 | Soothing Ending | 10 ~ 30 | 10 | — | Sine | Soothing ending |
+| 1 | Power Smooth | 3 ~ 8 | 50 | 300 | Symmetric Square | Strong smoothing |
+| 2 | Burst Train | 3 ~ 8 | 50 (burst 10 Hz) | 300 | Burst Train | Burst pulse train |
+| 3 | Gentle Smooth | 2 ~ 6 | 35 | 300 | Symmetric Square | Gentle smoothing |
+| 4 | Deep Sculpt | 3 ~ 8 | 40 ~ 50 | 4 kHz carrier | Balanced Square | Deep sculpting |
+| 5 | Soft Sculpt | 3 ~ 8 | 30 ~ 40 | 2 ~ 4 kHz | Sine | Soft sculpting |
+| 6 | Circulation Sculpt | 2 ~ 6 | 2 ~ 10 | 4 kHz carrier | Balanced Sine | Circulation sculpting |
+| 7 | Smooth & Firm | 1 ~ 5 | 80 ~ 100 | 400 | Triangle | Smooth & firm |
+| 8 | Lymphatic Drainage | 1 ~ 4 | 5 | 450 | Low-freq Sine | Lymphatic drainage |
+| 9 | Soothing Ending | 1 ~ 3 | 10 | — | Sine | Soothing ending |
 
 ### 3.2 Current Mapping Rule
 
@@ -69,7 +69,7 @@ User controls current intensity via percentage (0 ~ 100%):
 actual_current = min_current + (max_current - min_current) × percent / 100
 ```
 
-**Example**: Waveform 1 (30~80 mA), percent = 50 → 30 + (80 - 30) × 50 / 100 = 55 mA
+**Example**: Waveform 1 (3~8 mA), percent = 50 → 3 + (8 - 3) × 50 / 100 = 5.5 mA
 
 ### 3.3 Waveform Generation Method Selection
 
@@ -434,3 +434,4 @@ Waveform #1: Power Smooth
 |---------|------|--------|---------|
 | V1.0 | 2026-07-01 | Engineering Team | Initial version, define 9 waveform specs and implementation |
 | V1.1 | 2026-07-14 | Engineering Team | Added SPI communication protocol section (write/read protocol, bit-bang timing) |
+| V1.2 | 2026-07-30 | Engineering Team | Reduced all waveform current ranges by 10x (e.g. 30~80 mA → 3~8 mA) |
